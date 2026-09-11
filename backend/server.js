@@ -141,7 +141,11 @@ app.get('/api/jobs/search', async (req, res) => {
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-app.listen(PORT, () => {
-  console.log(`Job aggregator backend running on http://localhost:${PORT}`);
-  console.log(`Try: http://localhost:${PORT}/api/jobs/search?query=developer&location=bangalore`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Job aggregator backend running on http://localhost:${PORT}`);
+    console.log(`Try: http://localhost:${PORT}/api/jobs/search?query=developer&location=bangalore`);
+  });
+}
+
+module.exports = app;
