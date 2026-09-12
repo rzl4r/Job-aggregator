@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+
+function getInitialTheme() {
+  const saved = localStorage.getItem('roundup-theme');
+  if (saved === 'dark' || saved === 'light') return saved;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 
 function timeAgo(dateStr) {
   if (!dateStr) return null;
@@ -48,7 +54,16 @@ function PinIcon() {
   );
 }
 
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+      <path d="M12 3.5l2.4 5 5.6.6-4.2 3.8 1.2 5.5-5-2.8-5 2.8 1.2-5.5L4 9.1l5.6-.6z" />
+    </svg>
+  );
+}
+
 export default function App() {
+  const [theme, setTheme] = useState(getInitialTheme);
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState([]);
@@ -82,6 +97,11 @@ export default function App() {
 
   const sources = [...new Set(jobs.map((j) => j.source))];
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('roundup-theme', theme);
+  }, [theme]);
+
   return (
     <div className="page">
       <nav className="appbar">
@@ -89,7 +109,24 @@ export default function App() {
           <SkillMark />
           Roundup
         </span>
-        <span className="appbar__edition">No. 01</span>
+        <div className="appbar__side">
+          <button
+            className="theme-toggle"
+            type="button"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            <span className={`theme-toggle__icon ${theme === 'light' ? 'is-visible' : ''}`}>
+              <StarIcon />
+            </span>
+            <span className={`theme-toggle__icon ${theme === 'dark' ? 'is-visible' : ''}`}>
+              <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+                <path d="M20 15A8.5 8.5 0 0 1 9 4a8.5 8.5 0 1 0 11 11z" />
+              </svg>
+            </span>
+          </button>
+          <span className="appbar__edition">No. 01</span>
+        </div>
       </nav>
 
       <header className="masthead">
