@@ -682,6 +682,41 @@ code {
   border-color: var(--accent);
 }
 
+.listings__more {
+  margin-top: 2rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: center;
+}
+
+.load-more {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0.6rem 1.6rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.load-more:hover:not(:disabled) {
+  color: var(--ink-paper);
+  background: var(--accent);
+}
+
+.load-more:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* ---------- Scrollbar ---------- */
 
 ::-webkit-scrollbar {
