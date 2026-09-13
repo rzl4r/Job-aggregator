@@ -281,11 +281,6 @@ export default function App() {
 
       <footer className="foot">
         <p className="foot__brand">Roundup</p>
-        <p>
-          Results from {sources.length ? sources.join(', ') : 'Adzuna, Jooble'} ·{' '}
-          <a href="https://developer.adzuna.com/" target="_blank" rel="noreferrer">Adzuna</a> ·{' '}
-          <a href="https://jooble.org/api/about" target="_blank" rel="noreferrer">Jooble</a>
-        </p>
       </footer>
     </div>
   );
