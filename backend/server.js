@@ -90,13 +90,13 @@ async function searchJSearch({ query, location, page = 1 }) {
   const apiKey = process.env.RAPIDAPI_KEY;
   if (!apiKey) return []; // skip silently if not configured
 
-  const url = 'https://jsearch.p.rapidapi.com/search';
+  const url = 'https://jsearch.p.rapidapi.com/search-v2';
 
   const { data } = await axios.get(url, {
     params: {
       query: location ? `${query} in ${location}` : query,
-      page: String(page),
       num_pages: '1',
+      country: process.env.ADZUNA_COUNTRY || 'in',
     },
     headers: {
       'X-RapidAPI-Key': apiKey,
@@ -105,11 +105,11 @@ async function searchJSearch({ query, location, page = 1 }) {
     timeout: 8000,
   });
 
-  return (data.data || []).map((job, i) => {
+  return (data.data?.jobs || []).map((job, i) => {
     const salary =
       job.job_min_salary && job.job_max_salary
         ? `${Math.round(job.job_min_salary)} - ${Math.round(job.job_max_salary)}`
-        : job.job_salary || null;
+        : job.job_salary || job.job_salary_string || null;
 
     return {
       id: `jsearch-${job.job_id || page}-${i}`,
@@ -119,7 +119,7 @@ async function searchJSearch({ query, location, page = 1 }) {
       salary,
       description: (job.job_description || '').replace(/<[^>]+>/g, '').slice(0, 280),
       url: job.job_apply_link || job.job_google_link || '',
-      source: job.job_source || 'JSearch',
+      source: job.job_publisher || 'JSearch',
       postedAt: job.job_posted_at_datetime_utc || null,
     };
   });
