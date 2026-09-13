@@ -68,6 +68,29 @@ export default function App() {
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
   const [sourceErrors, setSourceErrors] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  async function fetchJobs(p, { append = false } = {}) {
+    const params = new URLSearchParams({ query });
+    if (location.trim()) params.set('location', location.trim());
+    if (p > 1) params.set('page', String(p));
+
+    const res = await fetch(`${API_BASE}/api/jobs/search?${params.toString()}`);
+    if (!res.ok) throw new Error(`Server responded ${res.status}`);
+    const data = await res.json();
+
+    setSourceErrors(data.sourceErrors || []);
+    if (append) {
+      setJobs((prev) => {
+        const seen = new Set(prev.map((j) => j.id));
+        return [...prev, ...(data.jobs || []).filter((j) => !seen.has(j.id))];
+      });
+    } else {
+      setJobs(data.jobs || []);
+    }
+    return data;
+  }
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -77,19 +100,26 @@ export default function App() {
     setHasSearched(true);
 
     try {
-      const params = new URLSearchParams({ query });
-      if (location.trim()) params.set('location', location.trim());
-
-      const res = await fetch(`${API_BASE}/api/jobs/search?${params.toString()}`);
-      if (!res.ok) throw new Error(`Server responded ${res.status}`);
-      const data = await res.json();
-
-      setJobs(data.jobs || []);
-      setSourceErrors(data.sourceErrors || []);
+      await fetchJobs(1);
+      setPage(1);
       setStatus('done');
     } catch (err) {
       console.error(err);
       setStatus('error');
+    }
+  }
+
+  async function loadMore() {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      await fetchJobs(next, { append: true });
+      setPage(next);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -273,6 +303,24 @@ export default function App() {
                 </div>
               </a>
             ))}
+
+            <div className="listings__more">
+              <button
+                className="load-more"
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" />
+                    Loading more
+                  </>
+                ) : (
+                  'Load more results'
+                )}
+              </button>
+            </div>
           </>
         )}
       </main>
