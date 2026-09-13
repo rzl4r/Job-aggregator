@@ -25,40 +25,56 @@ function normalizeKey(title = '', company = '') {
 // jobs already reshaped into one common format:
 // { id, title, company, location, salary, description, url, source, postedAt }
 
+// Adzuna exposes one API per country, so "worldwide" means hitting a
+// list of country endpoints in parallel and merging the results.
+const ADZUNA_COUNTRIES = (
+  process.env.ADZUNA_COUNTRIES ||
+  'au,br,ca,de,es,fr,gb,in,it,mx,nl,nz,pl,ru,sg,us,za'
+)
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
 async function searchAdzuna({ query, location, page = 1 }) {
   const appId = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_APP_KEY;
-  const country = process.env.ADZUNA_COUNTRY || 'in';
 
   if (!appId || !appKey) return []; // skip silently if not configured
 
-  const url = `https://api.adzuna.com/v1/api/jobs/${country}/search/${page}`;
+  const tasks = ADZUNA_COUNTRIES.map((country) =>
+    axios
+      .get(`https://api.adzuna.com/v1/api/jobs/${country}/search/${page}`, {
+        params: {
+          app_id: appId,
+          app_key: appKey,
+          what: query,
+          where: location || undefined,
+          results_per_page: 10,
+        },
+        timeout: 8000,
+      })
+      .then(({ data }) => data)
+      .catch(() => null) // a country without results should not fail the search
+  );
 
-  const { data } = await axios.get(url, {
-    params: {
-      app_id: appId,
-      app_key: appKey,
-      what: query,
-      where: location || undefined,
-      results_per_page: 20,
-    },
-    timeout: 8000,
-  });
+  const responses = await Promise.all(tasks);
 
-  return (data.results || []).map((job) => ({
-    id: `adzuna-${job.id}`,
-    title: job.title?.replace(/<[^>]+>/g, '') || 'Untitled role',
-    company: job.company?.display_name || 'Unknown company',
-    location: job.location?.display_name || location || 'Not specified',
-    salary:
-      job.salary_min && job.salary_max
-        ? `${Math.round(job.salary_min)} - ${Math.round(job.salary_max)}`
-        : null,
-    description: job.description?.replace(/<[^>]+>/g, '').slice(0, 280) || '',
-    url: job.redirect_url,
-    source: 'Adzuna',
-    postedAt: job.created,
-  }));
+  return responses.flatMap((data, i) =>
+    (data?.results || []).map((job) => ({
+      id: `adzuna-${ADZUNA_COUNTRIES[i]}-${job.id}`,
+      title: job.title?.replace(/<[^>]+>/g, '') || 'Untitled role',
+      company: job.company?.display_name || 'Unknown company',
+      location: job.location?.display_name || location || 'Not specified',
+      salary:
+        job.salary_min && job.salary_max
+          ? `${Math.round(job.salary_min)} - ${Math.round(job.salary_max)}`
+          : null,
+      description: job.description?.replace(/<[^>]+>/g, '').slice(0, 280) || '',
+      url: job.redirect_url,
+      source: 'Adzuna',
+      postedAt: job.created,
+    }))
+  );
 }
 
 async function searchJooble({ query, location, page = 1 }) {
@@ -96,7 +112,6 @@ async function searchJSearch({ query, location, page = 1 }) {
     params: {
       query: location ? `${query} in ${location}` : query,
       num_pages: '1',
-      country: process.env.ADZUNA_COUNTRY || 'in',
     },
     headers: {
       'X-RapidAPI-Key': apiKey,
