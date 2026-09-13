@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  (window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 function getInitialTheme() {
   const saved = localStorage.getItem('roundup-theme');
