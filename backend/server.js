@@ -86,7 +86,46 @@ async function searchJooble({ query, location, page = 1 }) {
   }));
 }
 
-const SOURCES = [searchAdzuna, searchJooble];
+async function searchJSearch({ query, location, page = 1 }) {
+  const apiKey = process.env.RAPIDAPI_KEY;
+  if (!apiKey) return []; // skip silently if not configured
+
+  const url = 'https://jsearch.p.rapidapi.com/search';
+
+  const { data } = await axios.get(url, {
+    params: {
+      query: location ? `${query} in ${location}` : query,
+      page: String(page),
+      num_pages: '1',
+    },
+    headers: {
+      'X-RapidAPI-Key': apiKey,
+      'X-RapidAPI-Host': 'jsearch.p.rapidapi.com',
+    },
+    timeout: 8000,
+  });
+
+  return (data.data || []).map((job, i) => {
+    const salary =
+      job.job_min_salary && job.job_max_salary
+        ? `${Math.round(job.job_min_salary)} - ${Math.round(job.job_max_salary)}`
+        : job.job_salary || null;
+
+    return {
+      id: `jsearch-${job.job_id || page}-${i}`,
+      title: job.job_title || 'Untitled role',
+      company: job.employer_name || 'Unknown company',
+      location: job.job_location || location || 'Not specified',
+      salary,
+      description: (job.job_description || '').replace(/<[^>]+>/g, '').slice(0, 280),
+      url: job.job_apply_link || job.job_google_link || '',
+      source: job.job_source || 'JSearch',
+      postedAt: job.job_posted_at_datetime_utc || null,
+    };
+  });
+}
+
+const SOURCES = [searchAdzuna, searchJooble, searchJSearch];
 
 // ---------- Merge + dedupe ----------
 
