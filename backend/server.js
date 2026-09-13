@@ -35,46 +35,33 @@ const ADZUNA_COUNTRIES = (
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 
-const ADZUNA_RESULTS_PER_PAGE = Math.min(
-  Number(process.env.ADZUNA_RESULTS_PER_PAGE) || 50,
-  50
-);
-const ADZUNA_MAX_PAGES = 3;
-
 async function searchAdzuna({ query, location, page = 1 }) {
   const appId = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_APP_KEY;
 
   if (!appId || !appKey) return []; // skip silently if not configured
 
-  const pages = Math.min(Math.max(Number(page) || 1, 1), ADZUNA_MAX_PAGES);
-
-  const tasks = [];
-  for (const country of ADZUNA_COUNTRIES) {
-    for (let p = 1; p <= pages; p++) {
-      tasks.push(
-        axios
-          .get(`https://api.adzuna.com/v1/api/jobs/${country}/search/${p}`, {
-            params: {
-              app_id: appId,
-              app_key: appKey,
-              what: query,
-              where: location || undefined,
-              results_per_page: ADZUNA_RESULTS_PER_PAGE,
-            },
-            timeout: 9000,
-          })
-          .then(({ data }) => ({ country, data }))
-          .catch(() => null) // a country/page without results should not fail the search
-      );
-    }
-  }
+  const tasks = ADZUNA_COUNTRIES.map((country) =>
+    axios
+      .get(`https://api.adzuna.com/v1/api/jobs/${country}/search/${page}`, {
+        params: {
+          app_id: appId,
+          app_key: appKey,
+          what: query,
+          where: location || undefined,
+          results_per_page: 10,
+        },
+        timeout: 8000,
+      })
+      .then(({ data }) => data)
+      .catch(() => null) // a country without results should not fail the search
+  );
 
   const responses = await Promise.all(tasks);
 
-  return responses.flatMap((res) =>
-    (res?.data?.results || []).map((job) => ({
-      id: `adzuna-${res.country}-${job.id}`,
+  return responses.flatMap((data, i) =>
+    (data?.results || []).map((job) => ({
+      id: `adzuna-${ADZUNA_COUNTRIES[i]}-${job.id}`,
       title: job.title?.replace(/<[^>]+>/g, '') || 'Untitled role',
       company: job.company?.display_name || 'Unknown company',
       location: job.location?.display_name || location || 'Not specified',
@@ -121,12 +108,10 @@ async function searchJSearch({ query, location, page = 1 }) {
 
   const url = 'https://jsearch.p.rapidapi.com/search-v2';
 
-  const pages = Math.min(Math.max(Number(page) || 1, 1), 5);
-
   const { data } = await axios.get(url, {
     params: {
       query: location ? `${query} in ${location}` : query,
-      num_pages: String(pages),
+      num_pages: '1',
     },
     headers: {
       'X-RapidAPI-Key': apiKey,
