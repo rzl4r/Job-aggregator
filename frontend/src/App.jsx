@@ -150,21 +150,29 @@ export default function App() {
 
       <form className="searchbar" onSubmit={handleSearch}>
         <div className="searchbar__group">
-          <SearchIcon />
+          <label className="field-label" htmlFor="field-query">
+            <SearchIcon />
+            Role, skill or title
+          </label>
           <input
+            id="field-query"
             className="searchbar__field searchbar__field--main"
             type="text"
-            placeholder="Job title, e.g. frontend developer"
+            placeholder="e.g. frontend developer"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
         <div className="searchbar__group searchbar__group--pin">
-          <PinIcon />
+          <label className="field-label" htmlFor="field-location">
+            <PinIcon />
+            Location
+          </label>
           <input
+            id="field-location"
             className="searchbar__field"
             type="text"
-            placeholder="Location (optional)"
+            placeholder="City or region (optional)"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
           />
@@ -247,7 +255,7 @@ export default function App() {
                     </div>
                   </div>
                   <p className="listing__meta">
-                    {job.company}
+                    <span className="listing__company">{job.company}</span>
                     <span className="dot" aria-hidden="true" />
                     {job.location}
                     {job.salary && (
@@ -272,8 +280,9 @@ export default function App() {
       </main>
 
       <footer className="foot">
+        <p className="foot__brand">Roundup</p>
         <p>
-          Roundup · pulled from {sources.length ? sources.join(', ') : 'Adzuna, Jooble'} ·
+          Results from {sources.length ? sources.join(', ') : 'Adzuna, Jooble'} ·{' '}
           <a href="https://developer.adzuna.com/" target="_blank" rel="noreferrer">Adzuna</a> ·{' '}
           <a href="https://jooble.org/api/about" target="_blank" rel="noreferrer">Jooble</a>
         </p>
