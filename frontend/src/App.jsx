@@ -133,13 +133,14 @@ function Spinner() {
   return <span className="spinner" aria-hidden="true" />;
 }
 
-function JobRow({ job, active, onSelect }) {
+function JobRow({ job, index, active, onSelect }) {
   return (
     <button
       type="button"
       className={`jobrow${active ? ' is-active' : ''}`}
       onClick={() => onSelect(job)}
     >
+      <span className="jobrow__index">{String(index + 1).padStart(2, '0')}</span>
       <span className={`jobrow__logo ${monogramClass(job.company)}`}>{monogram(job.company)}</span>
       <span className="jobrow__body">
         <span className="jobrow__top">
@@ -170,9 +171,10 @@ function JobRow({ job, active, onSelect }) {
   );
 }
 
-function SkeletonRow() {
+function SkeletonRow({ index }) {
   return (
     <div className="jobrow skeleton" aria-hidden="true">
+      <span className="jobrow__index">{String(index + 1).padStart(2, '0')}</span>
       <span className="skeleton__logo" />
       <span className="jobrow__body">
         <span className="skeleton__bar skeleton__bar--title" />
@@ -200,6 +202,7 @@ function DetailPane({ job }) {
         <>
           <div className="detail__head">
             <span className="detail__source">
+              <span className="detail__source-dot" />
               {job.source} listing
             </span>
             <h2 className="detail__title">{job.title}</h2>
@@ -218,7 +221,7 @@ function DetailPane({ job }) {
               )}
               {job.salary && (
                 <div className="fact">
-                  <span className="fact__ico">
+                  <span className="fact__ico fact__ico--gold">
                     <span className="fact__salary-symbol">₹</span>
                   </span>
                   <span>
@@ -333,7 +336,7 @@ export default function App() {
           <span className="topbar__logo">
             <LogoMark />
           </span>
-          Roundup
+          <span className="wordmark">Roundup</span>
         </a>
         <nav className="topbar__nav">
           <a className="topbar__link is-active" href="#top">
@@ -394,9 +397,16 @@ export default function App() {
           )}
         </button>
       </form>
-      <p className="searchbar__hint">
-        Aggregating {SOURCE_LIST.join(' · ')} · worldwide coverage
-      </p>
+
+      <div className="strip">
+        <span className="strip__mono">
+          <span className="strip__dot" />
+          LIVE
+        </span>
+        <span className="strip__sources">aggregating {SOURCE_LIST.join(' · ')}</span>
+        <span className="strip__spacer" />
+        <span className="strip__mono">worldwide</span>
+      </div>
 
       {status === 'error' && (
         <div className="state state--error" role="alert">
@@ -415,12 +425,12 @@ export default function App() {
               <p className="results__count">Searching…</p>
             </div>
             <div className="results__list">
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
+              <SkeletonRow index={0} />
+              <SkeletonRow index={1} />
+              <SkeletonRow index={2} />
+              <SkeletonRow index={3} />
+              <SkeletonRow index={4} />
+              <SkeletonRow index={5} />
             </div>
           </section>
           <DetailPane job={EMPTY_JOB} />
@@ -429,6 +439,7 @@ export default function App() {
 
       {status === 'idle' && !hasSearched && (
         <div className="state">
+          <p className="state__kicker">Ready when you are</p>
           <p className="state__title">Kick off with a search</p>
           <p className="state__text">
             Type a role above and we'll pull matching jobs from Adzuna, Jooble and JSearch — across
@@ -439,6 +450,7 @@ export default function App() {
 
       {status === 'done' && jobs.length === 0 && (
         <div className="state">
+          <p className="state__kicker">No luck</p>
           <p className="state__title">No jobs found</p>
           <p className="state__text">
             Try a broader title (like “developer”), remove the location, or check your spelling.
@@ -450,13 +462,14 @@ export default function App() {
         <div className="layout">
           <section className="results">
             <div className="results__head">
-              <p className="results__count">
-                <strong>{visibleJobs.length}</strong> {visibleJobs.length === 1 ? 'job' : 'jobs'}
-                {filter !== 'All' && ` from ${filter}`}
-                {location && ` near ${location}`}
-                {!location && filter === 'All' && ' worldwide'}
-                <span className="results__sub">· sorted by {sortLabel(sortBy).toLowerCase()}</span>
-              </p>
+              <div className="results__headline">
+                <p className="results__count">
+                  {filter !== 'All' && <span className="results__mono">FILTERED</span>}
+                  <strong>{visibleJobs.length}</strong> {visibleJobs.length === 1 ? 'job' : 'jobs'}
+                  {location ? ` near ${location}` : filter === 'All' ? ' worldwide' : ''}
+                </p>
+                <p className="results__sub">sorted by {sortLabel(sortBy).toLowerCase()}</p>
+              </div>
               {sourceOptions.length > 1 && (
                 <div className="filters">
                   <button
@@ -497,14 +510,12 @@ export default function App() {
             {visibleJobs.length === 0 ? (
               <div className="state state--compact">
                 <p className="state__title">No results for this filter</p>
-                <p className="state__text">
-                  Try “All” or another source to see more listings.
-                </p>
+                <p className="state__text">Try “All” or another source to see more listings.</p>
               </div>
             ) : (
               <div className="results__list">
-                {visibleJobs.map((job) => (
-                  <JobRow key={job.id} job={job} active={selectedJob.id === job.id} onSelect={setSelectedJob} />
+                {visibleJobs.map((job, i) => (
+                  <JobRow key={job.id} job={job} index={i} active={selectedJob.id === job.id} onSelect={setSelectedJob} />
                 ))}
               </div>
             )}
@@ -514,7 +525,11 @@ export default function App() {
       )}
 
       <footer className="foot">
-        <p>© 2026 Roundup · Jobs aggregated from Adzuna, Jooble and JSearch.</p>
+        <p className="foot__brand">
+          <LogoMark />
+          Roundup
+        </p>
+        <p>Jobs aggregated from Adzuna, Jooble and JSearch · © 2026</p>
       </footer>
     </div>
   );
