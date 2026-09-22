@@ -2,7 +2,19 @@ import { useEffect, useState } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
-const QUICK_PICKS = ['Frontend Developer', 'Data Analyst', 'Product Designer', 'DevOps Engineer', 'Backend Developer', 'Remote'];
+const SOURCE_LIST = ['Adzuna', 'Jooble', 'JSearch'];
+
+const EMPTY_JOB = {
+  id: null,
+  title: '',
+  company: '',
+  location: '',
+  salary: '',
+  description: '',
+  url: '',
+  source: '',
+  postedAt: null,
+};
 
 function getInitialTheme() {
   const saved = localStorage.getItem('roundup-theme');
@@ -11,38 +23,14 @@ function getInitialTheme() {
 }
 
 function timeAgo(dateStr) {
-  if (!dateStr) return null;
+  if (!dateStr) return 'Recently';
   const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (Number.isNaN(days)) return null;
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  const months = Math.floor(days / 30);
-  return `${months}mo ago`;
-}
-
-function logoInitials(company = '') {
-  const words = company
-    .replace(/[^a-zA-Z0-9 ]/g, '')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2);
-  if (words.length === 0) return '?';
-  return words.map((w) => w[0].toUpperCase()).join('');
-}
-
-function logoColor(company = '') {
-  const classes = ['logo-a', 'logo-b', 'logo-c', 'logo-d', 'logo-e', 'logo-f'];
-  let hash = 0;
-  for (let i = 0; i < company.length; i++) hash = (hash * 31 + company.charCodeAt(i)) >>> 0;
-  return classes[hash % classes.length];
-}
-
-function sourceClass(source = '') {
-  const key = source.toLowerCase().replace(/[\s.'-]/g, '');
-  const map = { adzuna: 'src-adzuna', jooble: 'src-jooble', linkedin: 'src-linkedin', indeed: 'src-indeed', glassdoor: 'src-glassdoor', ziprecruiter: 'src-ziprecruiter' };
-  return map[key] || 'src-default';
+  if (Number.isNaN(days)) return 'Recently';
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 function LogoMark() {
@@ -56,7 +44,7 @@ function LogoMark() {
 
 function SearchIcon() {
   return (
-    <svg className="search-ico" viewBox="0 0 24 24" role="img" aria-hidden="true">
+    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
       <circle cx="11" cy="11" r="7" />
       <path d="M16.5 16.5L21 21" />
     </svg>
@@ -68,14 +56,6 @@ function PinIcon() {
     <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
       <path d="M12 21s-7-5.1-7-11a7 7 0 0 1 14 0c0 5.9-7 11-7 11z" />
       <circle cx="12" cy="10" r="2.6" />
-    </svg>
-  );
-}
-
-function ArrowIcon() {
-  return (
-    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-      <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }
@@ -97,90 +77,94 @@ function MoonIcon() {
   );
 }
 
-function BriefcaseIcon() {
+function ExternalIcon() {
   return (
     <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-      <rect x="3.5" y="7.5" width="17" height="12" rx="2" />
-      <path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3.5 13h17" />
+      <path d="M14 4h6v6M20 4L10 14" />
+      <path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6" />
     </svg>
   );
 }
 
-function GlobeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z" />
-    </svg>
-  );
+function Spinner() {
+  return <span className="spinner" aria-hidden="true" />;
 }
 
-function LayersIcon() {
+function JobRow({ job, active, onSelect }) {
   return (
-    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-      <path d="M12 3.5l8.5 4.5L12 12.5 3.5 8z" />
-      <path d="M3.5 12.5L12 17l8.5-4.5M3.5 16.5L12 21l8.5-4.5" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-      <path d="M12 4L2.5 20h19L12 4z" />
-      <path d="M12 10v4.2M12 17.4v.1" />
-    </svg>
-  );
-}
-
-function ListIcon() {
-  return (
-    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-      <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
-    </svg>
-  );
-}
-
-function JobCard({ job }) {
-  return (
-    <a className="jobcard" href={job.url} target="_blank" rel="noreferrer">
-      <span className={`jobcard__logo ${logoColor(job.company)}`}>{logoInitials(job.company)}</span>
-      <div className="jobcard__body">
-        <div className="jobcard__top">
-          <h3 className="jobcard__title">{job.title}</h3>
-          <span className={`source-tag ${sourceClass(job.source)}`}>{job.source}</span>
-        </div>
-        <div className="jobcard__meta">
-          <span className="meta-item meta-item--company">{job.company}</span>
-          {job.location && (
-            <span className="meta-item">
-              <PinIcon />
-              {job.location}
-            </span>
-          )}
-          {job.salary && <span className="meta-item meta-item--salary">{job.salary}</span>}
-          {timeAgo(job.postedAt) && <span className="meta-item meta-item--date">{timeAgo(job.postedAt)}</span>}
-        </div>
-        {job.description && <p className="jobcard__desc">{job.description}</p>}
-      </div>
-      <span className="jobcard__action">
-        Apply
-        <ArrowIcon />
+    <button
+      type="button"
+      className={`jobrow${active ? ' is-active' : ''}`}
+      onClick={() => onSelect(job)}
+    >
+      <span className="jobrow__title">{job.title}</span>
+      <span className="jobrow__company">{job.company}</span>
+      <span className="jobrow__meta">
+        {job.location && <span>{job.location}</span>}
+        {job.salary && <span className="jobrow__salary">{job.salary}</span>}
       </span>
-    </a>
+      {job.description && <span className="jobrow__snippet">{job.description}</span>}
+      <span className="jobrow__foot">
+        <span className="jobrow__source">via {job.source}</span>
+        <span className="jobrow__date">{timeAgo(job.postedAt)}</span>
+      </span>
+    </button>
   );
 }
 
 function SkeletonRow() {
   return (
-    <div className="skeleton" aria-hidden="true">
-      <span className="skeleton__logo" />
-      <div>
-        <span className="skeleton__bar skeleton__title" />
-        <span className="skeleton__bar skeleton__meta" />
-        <span className="skeleton__bar skeleton__desc" />
-      </div>
+    <div className="jobrow skeleton" aria-hidden="true">
+      <span className="skeleton__bar skeleton__bar--title" />
+      <span className="skeleton__bar skeleton__bar--company" />
+      <span className="skeleton__bar skeleton__bar--snippet" />
     </div>
+  );
+}
+
+function DetailPane({ job }) {
+  const hasJob = Boolean(job.id);
+  return (
+    <aside className="detail">
+      {!hasJob && (
+        <div className="detail__empty">
+          <p className="detail__empty-title">Select a job to see details</p>
+          <p className="detail__empty-text">
+            Results are shown on the left. Click any listing to read the description and apply.
+          </p>
+        </div>
+      )}
+      {hasJob && (
+        <>
+          <div className="detail__head">
+            <h2 className="detail__title">{job.title}</h2>
+            <p className="detail__company">{job.company}</p>
+            <div className="detail__meta">
+              {job.location && (
+                <span className="detail__meta-item">
+                  <PinIcon />
+                  {job.location}
+                </span>
+              )}
+              {job.salary && <span className="detail__meta-item detail__meta-item--salary">{job.salary}</span>}
+              <span className="detail__meta-item">{timeAgo(job.postedAt)}</span>
+            </div>
+            <div className="detail__actions">
+              <a className="btn-apply" href={job.url} target="_blank" rel="noreferrer">
+                Apply on {job.source}
+                <ExternalIcon />
+              </a>
+            </div>
+          </div>
+          <div className="detail__body">
+            <p className="detail__desc">{job.description}</p>
+          </div>
+          <div className="detail__foot">
+            <p className="detail__source-note">Listing found via {job.source}.</p>
+          </div>
+        </>
+      )}
+    </aside>
   );
 }
 
@@ -190,7 +174,7 @@ export default function App() {
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState([]);
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
-  const [sourceErrors, setSourceErrors] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(EMPTY_JOB);
   const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
@@ -204,6 +188,7 @@ export default function App() {
 
     setStatus('loading');
     setHasSearched(true);
+    setSelectedJob(EMPTY_JOB);
 
     try {
       const params = new URLSearchParams({ query });
@@ -213,8 +198,13 @@ export default function App() {
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
       const data = await res.json();
 
-      setJobs(data.jobs || []);
-      setSourceErrors(data.sourceErrors || []);
+      const sorted = [...(data.jobs || [])].sort(
+        (a, b) =>
+          (b.postedAt ? Date.parse(b.postedAt) : 0) - (a.postedAt ? Date.parse(a.postedAt) : 0)
+      );
+
+      setJobs(sorted);
+      setSelectedJob(sorted[0] ? { ...sorted[0] } : EMPTY_JOB);
       setStatus('done');
     } catch (err) {
       console.error(err);
@@ -222,235 +212,141 @@ export default function App() {
     }
   }
 
-  const sources = [...new Set(jobs.map((j) => j.source))];
-
   return (
     <div className="page">
-      <nav className="appbar">
-        <a className="appbar__mark" href="#top" aria-label="Roundup home">
-          <span className="appbar__logo">
+      <header className="topbar">
+        <a className="topbar__brand" href="#top" aria-label="Roundup home">
+          <span className="topbar__logo">
             <LogoMark />
           </span>
           Roundup
         </a>
-        <div className="appbar__nav">
-          <a className="appbar__link is-active" href="#top">
-            Find jobs
-          </a>
-          <a className="appbar__link is-disabled" href="#top" aria-disabled="true">
-            Saved jobs
-          </a>
-          <a className="appbar__link is-disabled" href="#top" aria-disabled="true">
-            Alerts
-          </a>
-        </div>
-        <div className="appbar__actions">
-          <button
-            className="theme-toggle"
-            type="button"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          >
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
-        </div>
-      </nav>
-
-      <header className="hero" id="top">
-        <p className="hero__kicker">
-          <GlobeIcon />
-          Worldwide job search
-        </p>
-        <h1 className="hero__title">
-          Find your next role, <span className="grad">anywhere on Earth.</span>
-        </h1>
-        <p className="hero__sub">
-          One search across Adzuna, Jooble and live boards like LinkedIn and Indeed — merged,
-          deduplicated, and sorted into a single list.
-        </p>
-
-        <form className="search-panel" onSubmit={handleSearch}>
-          <div className="searchbar">
-            <div className="searchbar__group">
-              <label className="field-label" htmlFor="field-query">
-                <BriefcaseIcon />
-                Role, skill or title
-              </label>
-              <input
-                id="field-query"
-                className="searchbar__field"
-                type="text"
-                placeholder="e.g. frontend developer"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <div className="searchbar__group">
-              <label className="field-label" htmlFor="field-location">
-                <PinIcon />
-                Location
-              </label>
-              <input
-                id="field-location"
-                className="searchbar__field"
-                type="text"
-                placeholder="City or country (optional)"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-            <button className="searchbar__submit" type="submit" disabled={status === 'loading'}>
-              {status === 'loading' ? (
-                <>
-                  <span className="spinner" aria-hidden="true" />
-                  Searching
-                </>
-              ) : (
-                <>
-                  <SearchIcon />
-                  Search
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="quicksearches">
-            <span className="quicksearches__label">Popular:</span>
-            {QUICK_PICKS.map((pic) => (
-              <button
-                key={pic}
-                className="chip"
-                type="button"
-                onClick={() => {
-                  setQuery(pic);
-                  if (pic === 'Remote') setLocation('remote');
-                }}
-              >
-                {pic}
-              </button>
-            ))}
-          </div>
-        </form>
+        <button
+          className="theme-toggle"
+          type="button"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
       </header>
 
-      {sourceErrors.length > 0 && (
-        <p className="notice" role="alert">
-          <AlertIcon />
-          <span>
-            {sourceErrors.map((e) => e.source.replace('search', '')).join(' and ')} was unreachable
-            during this search. Results from other sources are shown below.
-          </span>
-        </p>
+      <form className="searchbar" onSubmit={handleSearch}>
+        <div className="searchbar__group searchbar__group--what">
+          <label className="searchbar__label" htmlFor="field-query">
+            What
+          </label>
+          <input
+            id="field-query"
+            className="searchbar__field"
+            type="text"
+            placeholder="Job title, keywords, or company"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <div className="searchbar__group">
+          <label className="searchbar__label" htmlFor="field-location">
+            Where
+          </label>
+          <input
+            id="field-location"
+            className="searchbar__field"
+            type="text"
+            placeholder="City or country (optional)"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
+        </div>
+        <button className="searchbar__submit" type="submit" disabled={status === 'loading'}>
+          {status === 'loading' ? (
+            <>
+              <Spinner />
+              Searching
+            </>
+          ) : (
+            <>
+              <SearchIcon />
+              Search
+            </>
+          )}
+        </button>
+      </form>
+      <p className="searchbar__hint">
+        Aggregating {SOURCE_LIST.join(' · ')} · worldwide coverage
+      </p>
+
+      {status === 'error' && (
+        <div className="state state--error" role="alert">
+          <p className="state__title">Couldn't reach the backend</p>
+          <p className="state__text">
+            Make sure the API server is running on port 5000 (<code>npm run dev</code> in{' '}
+            <code>backend/</code>), then search again.
+          </p>
+        </div>
+      )}
+
+      {status === 'loading' && (
+        <div className="layout">
+          <section className="results">
+            <div className="results__head">
+              <p className="results__count">Searching…</p>
+            </div>
+            <div className="results__list">
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </div>
+          </section>
+          <DetailPane job={EMPTY_JOB} />
+        </div>
       )}
 
       {status === 'idle' && !hasSearched && (
-        <section className="features" aria-label="What Roundup does">
-          <div className="feature">
-            <span className="feature__ico">
-              <LayersIcon />
-            </span>
-            <h2 className="feature__title">Aggregated boards</h2>
-            <p className="feature__text">
-              Adzuna and JSearch pull listings from dozens of boards — LinkedIn, Indeed, Glassdoor,
-              ZipRecruiter and more — into one result list.
-            </p>
-          </div>
-          <div className="feature">
-            <span className="feature__ico">
-              <GlobeIcon />
-            </span>
-            <h2 className="feature__title">Worldwide reach</h2>
-            <p className="feature__text">
-              Results from 17+ countries at once. Type a role and see openings across the globe, or
-              pin a city to zoom in.
-            </p>
-          </div>
-          <div className="feature">
-            <span className="feature__ico">
-              <ListIcon />
-            </span>
-            <h2 className="feature__title">Deduplicated</h2>
-            <p className="feature__text">
-              The same posting on multiple boards shows up once, tagged with where it lives, so you
-              only review each role one time.
-            </p>
-          </div>
-        </section>
+        <div className="state">
+          <p className="state__title">Kick off with a search</p>
+          <p className="state__text">
+            Type a role above and we'll pull matching jobs from Adzuna, Jooble and JSearch — across
+            dozens of boards like LinkedIn, Indeed and Glassdoor — into one list.
+          </p>
+        </div>
       )}
 
-      <main className="section">
-        {status === 'loading' && (
-          <div className="listings">
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
-          </div>
-        )}
+      {status === 'done' && jobs.length === 0 && (
+        <div className="state">
+          <p className="state__title">No jobs found</p>
+          <p className="state__text">
+            Try a broader title (like “developer”), remove the location, or check your spelling.
+          </p>
+        </div>
+      )}
 
-        {status === 'error' && (
-          <div className="empty-state">
-            <span className="empty-state__ico is-danger">
-              <AlertIcon />
-            </span>
-            <h2 className="empty-state__title">Couldn't reach the backend</h2>
-            <p className="empty-state__text">
-              Make sure the API server is running on port 5000 ({' '}
-              <code>npm run dev</code> in <code>backend/</code> ), then try again.
-            </p>
-          </div>
-        )}
-
-        {status === 'done' && jobs.length === 0 && (
-          <div className="empty-state">
-            <span className="empty-state__ico">
-              <SearchIcon />
-            </span>
-            <h2 className="empty-state__title">No listings matched </h2>
-            <p className="empty-state__text">
-              Try a broader title like “developer”, drop the location, or search in English for the
-              widest coverage.
-            </p>
-          </div>
-        )}
-
-        {status === 'done' && jobs.length > 0 && (
-          <>
-            <div className="results-head">
-              <p className="results-head__query">
-                <em>{jobs.length}</em> roles for “{query}”
-                {location && ` in ${location}`}
+      {status === 'done' && jobs.length > 0 && (
+        <div className="layout no-transition">
+          <section className="results">
+            <div className="results__head">
+              <p className="results__count">
+                <strong>{jobs.length}</strong> {jobs.length === 1 ? 'job' : 'jobs'} found
+                {location && ` near ${location}`}
+                {!location && ' worldwide'}
               </p>
-              <div className="results-head__meta">
-                <span className="count-badge">{jobs.length}</span>
-                <span className="sources-pills">
-                  {sources.map((s) => (
-                    <span key={s} className="pill">
-                      {s}
-                    </span>
-                  ))}
-                </span>
-              </div>
             </div>
-
-            <div className="listings">
+            <div className="results__list">
               {jobs.map((job) => (
-                <JobCard key={job.id} job={job} />
+                <JobRow key={job.id} job={job} active={selectedJob.id === job.id} onSelect={setSelectedJob} />
               ))}
             </div>
-          </>
-        )}
-      </main>
+          </section>
+          <DetailPane job={selectedJob} />
+        </div>
+      )}
 
       <footer className="foot">
-        <p className="foot__brand">
-          <LogoMark />
-          Roundup
-        </p>
-        <p>Every listing, one search. Built with Adzuna and JSearch.</p>
+        <p>© 2026 Roundup. Jobs aggregated from Adzuna, Jooble and JSearch.</p>
       </footer>
     </div>
   );
