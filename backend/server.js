@@ -194,48 +194,12 @@ function mergeResults(resultsBySource) {
     }
   }
 
-  return shuffle(Array.from(seen.values()));
-}
-
-// Re-order results so no single source always leads the list.
-// Shuffle each source's jobs, then round-robin across sources so the
-// top of the list always mixes Adzuna, Workable, JSearch, etc.
-function shuffle(arr) {
-  const buckets = new Map();
-  for (const job of arr) {
-    const key = job.source || 'Other';
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key).push(job);
-  }
-
-  for (const jobs of buckets.values()) {
-    for (let i = jobs.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [jobs[i], jobs[j]] = [jobs[j], jobs[i]];
-    }
-  }
-
-  const keys = Array.from(buckets.keys());
-  // Randomize which source leads the rotation so it's not always Adzuna first.
-  for (let i = keys.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [keys[i], keys[j]] = [keys[j], keys[i]];
-  }
-  const out = [];
-  let idx = 0;
-  let added = true;
-  while (added) {
-    added = false;
-    for (const key of keys) {
-      const jobs = buckets.get(key);
-      if (idx < jobs.length) {
-        out.push(jobs[idx]);
-        added = true;
-      }
-    }
-    idx++;
-  }
-  return out;
+  // Newest first. Jobs without a usable date sort to the bottom.
+  return Array.from(seen.values()).sort((a, b) => {
+    const at = Date.parse(a.postedAt) || 0;
+    const bt = Date.parse(b.postedAt) || 0;
+    return bt - at;
+  });
 }
 
 // ---------- Routes ----------
