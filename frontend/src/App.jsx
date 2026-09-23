@@ -60,6 +60,14 @@ function StarIcon() {
   );
 }
 
+function Close() {
+  return (
+    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
 export default function App() {
   const [theme, setTheme] = useState(getInitialTheme);
   const [query, setQuery] = useState('');
@@ -68,6 +76,11 @@ export default function App() {
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
   const [sourceErrors, setSourceErrors] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
+
+  function closeModal() {
+    setSelectedJob(null);
+  }
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -75,6 +88,7 @@ export default function App() {
 
     setStatus('loading');
     setHasSearched(true);
+    setSelectedJob(null);
 
     try {
       const params = new URLSearchParams({ query });
@@ -99,6 +113,15 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('roundup-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (!selectedJob) return;
+    function onKey(e) {
+      if (e.key === 'Escape') setSelectedJob(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedJob]);
 
   return (
     <div className="page">
@@ -239,7 +262,12 @@ export default function App() {
             </div>
 
             {jobs.map((job, i) => (
-              <a className="listing" key={job.id} href={job.url} target="_blank" rel="noreferrer">
+              <button
+                type="button"
+                className="listing"
+                key={job.id}
+                onClick={() => setSelectedJob(job)}
+              >
                 <span className="listing__index">{String(i + 1).padStart(2, '0')}</span>
                 <div className="listing__body">
                   <div className="listing__headline">
@@ -247,7 +275,7 @@ export default function App() {
                     <div className="listing__aside">
                       <span className="listing__source">{job.source}</span>
                       <span className="listing__open">
-                        Open
+                        Details
                         <Arrow />
                       </span>
                     </div>
@@ -271,7 +299,7 @@ export default function App() {
                   </p>
                   {job.description && <p className="listing__desc">{job.description}…</p>}
                 </div>
-              </a>
+              </button>
             ))}
           </>
         )}
@@ -280,6 +308,62 @@ export default function App() {
       <footer className="foot">
         <p className="foot__brand">Roundup</p>
       </footer>
+
+      {selectedJob && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label="Job details" onClick={closeModal}>
+          <div className="modal__panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__head">
+              <span className="modal__source">{selectedJob.source}</span>
+              <button
+                type="button"
+                className="modal__close"
+                onClick={closeModal}
+                aria-label="Close job details"
+              >
+                <Close />
+              </button>
+            </div>
+            <h2 className="modal__title">{selectedJob.title}</h2>
+            <p className="modal__company">{selectedJob.company}</p>
+            <p className="modal__meta">
+              <span className="meta-highlight">{selectedJob.location}</span>
+              {selectedJob.salary && (
+                <>
+                  <span className="modal__dot" aria-hidden="true" />
+                  <span className="meta-highlight">{selectedJob.salary}</span>
+                </>
+              )}
+              {timeAgo(selectedJob.postedAt) && (
+                <>
+                  <span className="modal__dot" aria-hidden="true" />
+                  {timeAgo(selectedJob.postedAt)}
+                </>
+              )}
+            </p>
+            <div className="modal__body">
+              <h3 className="modal__section">Description</h3>
+              {selectedJob.description ? (
+                <p className="modal__desc">{selectedJob.description}</p>
+              ) : (
+                <p className="modal__desc modal__desc--missing">
+                  No description was provided by {selectedJob.source} for this listing.
+                </p>
+              )}
+            </div>
+            <div className="modal__foot">
+              <a
+                className="modal__cta"
+                href={selectedJob.url}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                Visit job posting
+                <Arrow />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
