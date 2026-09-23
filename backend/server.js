@@ -69,7 +69,7 @@ async function searchAdzuna({ query, location, page = 1 }) {
         job.salary_min && job.salary_max
           ? `${Math.round(job.salary_min)} - ${Math.round(job.salary_max)}`
           : null,
-      description: job.description?.replace(/<[^>]+>/g, '').slice(0, 280) || '',
+      description: job.description?.replace(/<[^>]+>/g, '') || '',
       url: job.redirect_url,
       source: 'Adzuna',
       postedAt: job.created,
@@ -95,7 +95,7 @@ async function searchJooble({ query, location, page = 1 }) {
     company: job.company || 'Unknown company',
     location: job.location || location || 'Not specified',
     salary: job.salary || null,
-    description: (job.snippet || '').replace(/<[^>]+>/g, '').slice(0, 280),
+    description: (job.snippet || '').replace(/<[^>]+>/g, ''),
     url: job.link,
     source: 'Jooble',
     postedAt: job.updated,
@@ -132,7 +132,7 @@ async function searchJSearch({ query, location, page = 1 }) {
       company: job.employer_name || 'Unknown company',
       location: job.job_location || location || 'Not specified',
       salary,
-      description: (job.job_description || '').replace(/<[^>]+>/g, '').slice(0, 280),
+      description: (job.job_description || '').replace(/<[^>]+>/g, ''),
       url: job.job_apply_link || job.job_google_link || '',
       source: job.job_publisher || 'JSearch',
       postedAt: job.job_posted_at_datetime_utc || null,
@@ -140,7 +140,43 @@ async function searchJSearch({ query, location, page = 1 }) {
   });
 }
 
-const SOURCES = [searchAdzuna, searchJooble, searchJSearch];
+async function searchWorkable({ query, location, page = 1 }) {
+  const url = 'https://jobs.workable.com/api/v1/jobs';
+
+  const { data } = await axios.get(url, {
+    params: {
+      query,
+      location: location || undefined,
+    },
+    timeout: 8000,
+  });
+
+  return (data.jobs || []).map((job) => {
+    const loc = job.location || {};
+    const extraLoc = (job.locations || [])
+      .map((s) => (typeof s === 'string' ? s : ''))
+      .filter(Boolean)
+      .join(', ');
+
+    return {
+      id: `workable-${job.id || page}`,
+      title: job.title || 'Untitled role',
+      company: job.company?.title || job.company || 'Unknown company',
+      location:
+        [loc.city, loc.subregion, loc.countryName].filter(Boolean).join(', ') ||
+        extraLoc ||
+        location ||
+        'Not specified',
+      salary: null,
+      description: (job.description || job.socialSharingDescription || '').replace(/<[^>]+>/g, ''),
+      url: job.url,
+      source: 'Workable',
+      postedAt: job.created || null,
+    };
+  });
+}
+
+const SOURCES = [searchAdzuna, searchWorkable, searchJSearch];
 
 // ---------- Merge + dedupe ----------
 
