@@ -77,6 +77,7 @@ export default function App() {
   const [sourceErrors, setSourceErrors] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [workFilter, setWorkFilter] = useState('all'); // all | remote | hybrid | on-site
 
   function closeModal() {
     setSelectedJob(null);
@@ -108,6 +109,8 @@ export default function App() {
   }
 
   const sources = [...new Set(jobs.map((j) => j.source))];
+
+  const filteredJobs = workFilter === 'all' ? jobs : jobs.filter((j) => j.workMode === workFilter);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -261,7 +264,35 @@ export default function App() {
               <span className="resultsbar__sources">via {sources.join(' · ') || '—'}</span>
             </div>
 
-            {jobs.map((job, i) => (
+            <div className="workfilters">
+              {[
+                { value: 'all', label: 'Any' },
+                { value: 'remote', label: 'Remote' },
+                { value: 'hybrid', label: 'Hybrid' },
+                { value: 'on-site', label: 'On-site' },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`workfilter ${workFilter === value ? 'is-active' : ''}`}
+                  onClick={() => setWorkFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+              {workFilter !== 'all' && (
+                <span className="resultsbar__count workfilters__count">
+                  <strong>{filteredJobs.length}</strong> matching
+                </span>
+              )}
+            </div>
+
+            {filteredJobs.length === 0 ? (
+              <div className="empty">
+                No {workFilter} roles match this search. Try a different filter.
+              </div>
+            ) : (
+              filteredJobs.map((job, i) => (
               <button
                 type="button"
                 className="listing"
@@ -282,6 +313,12 @@ export default function App() {
                   </div>
                   <p className="listing__meta">
                     <span className="listing__company">{job.company}</span>
+                    {job.workMode && (
+                      <>
+                        <span className="dot" aria-hidden="true" />
+                        <span className={`mode-tag mode-tag--${job.workMode}`}>{job.workMode}</span>
+                      </>
+                    )}
                     <span className="dot" aria-hidden="true" />
                     {job.location}
                     {job.salary && (
@@ -300,7 +337,8 @@ export default function App() {
                   {job.description && <p className="listing__desc">{job.description}…</p>}
                 </div>
               </button>
-            ))}
+              ))
+            )}
           </>
         )}
       </main>
@@ -327,6 +365,14 @@ export default function App() {
             <p className="modal__company">{selectedJob.company}</p>
             <p className="modal__meta">
               <span className="meta-highlight">{selectedJob.location}</span>
+              {selectedJob.workMode && (
+                <>
+                  <span className="modal__dot" aria-hidden="true" />
+                  <span className={`mode-tag mode-tag--${selectedJob.workMode}`}>
+                    {selectedJob.workMode}
+                  </span>
+                </>
+              )}
               {selectedJob.salary && (
                 <>
                   <span className="modal__dot" aria-hidden="true" />

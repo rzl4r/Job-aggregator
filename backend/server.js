@@ -23,7 +23,16 @@ function normalizeKey(title = '', company = '') {
 // ---------- Source adapters ----------
 // Each adapter takes the same search params and returns an array of
 // jobs already reshaped into one common format:
-// { id, title, company, location, salary, description, url, source, postedAt }
+// { id, title, company, location, salary, description, url, source, postedAt, workMode }
+
+// Heuristic: figure out remote/hybrid/on-site from a text blob when the
+// source API doesn't tell us directly.
+function inferWorkMode(...texts) {
+  const hay = texts.join(' ').toLowerCase();
+  if (/\bremote\b|work from home|wfh|\(remote\)/.test(hay)) return 'remote';
+  if (/\bhybrid\b|flexible\/hybrid/.test(hay)) return 'hybrid';
+  return 'on-site';
+}
 
 // Adzuna exposes one API per country, so "worldwide" means hitting a
 // list of country endpoints in parallel and merging the results.
@@ -73,6 +82,7 @@ async function searchAdzuna({ query, location, page = 1 }) {
       url: job.redirect_url,
       source: 'Adzuna',
       postedAt: job.created,
+      workMode: inferWorkMode(job.title, job.location?.display_name),
     }))
   );
 }
@@ -136,6 +146,9 @@ async function searchJSearch({ query, location, page = 1 }) {
       url: job.job_apply_link || job.job_google_link || '',
       source: job.job_publisher || 'JSearch',
       postedAt: job.job_posted_at_datetime_utc || null,
+      workMode: job.job_is_remote
+        ? 'remote'
+        : inferWorkMode(job.job_title, job.job_location, job.job_description),
     };
   });
 }
@@ -172,6 +185,12 @@ async function searchWorkable({ query, location, page = 1 }) {
       url: job.url,
       source: 'Workable',
       postedAt: job.created || null,
+      workMode:
+        job.workplace === 'on_site'
+          ? 'on-site'
+          : typeof job.workplace === 'string'
+            ? job.workplace
+            : inferWorkMode(job.title, [loc.city, loc.subregion, loc.countryName].join(' ')),
     };
   });
 }
