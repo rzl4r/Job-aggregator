@@ -77,7 +77,13 @@ export default function App() {
   const [sourceErrors, setSourceErrors] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [workFilter, setWorkFilter] = useState('all'); // all | remote | hybrid | on-site
+  const [workModes, setWorkModes] = useState([]); // [] = all | ['remote' | 'hybrid' | 'on-site']
+
+  function toggleWorkMode(mode) {
+    setWorkModes((prev) =>
+      prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
+    );
+  }
 
   function closeModal() {
     setSelectedJob(null);
@@ -110,7 +116,10 @@ export default function App() {
 
   const sources = [...new Set(jobs.map((j) => j.source))];
 
-  const filteredJobs = workFilter === 'all' ? jobs : jobs.filter((j) => j.workMode === workFilter);
+  const filteredJobs =
+    workModes.length === 0
+      ? jobs
+      : jobs.filter((j) => j.workMode && workModes.includes(j.workMode));
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -201,6 +210,26 @@ export default function App() {
             onChange={(e) => setLocation(e.target.value)}
           />
         </div>
+        <div className="searchbar__group searchbar__group--mode">
+          <span className="field-label">Work mode</span>
+          <div className="mode-select" role="group" aria-label="Work mode">
+            {[
+              { value: 'remote', label: 'Remote' },
+              { value: 'hybrid', label: 'Hybrid' },
+              { value: 'on-site', label: 'On-site' },
+            ].map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={workModes.includes(value)}
+                className={`mode-select__chip ${workModes.includes(value) ? 'is-on' : ''}`}
+                onClick={() => toggleWorkMode(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <button className="searchbar__submit" type="submit" disabled={status === 'loading'}>
           {status === 'loading' ? (
             <>
@@ -264,32 +293,15 @@ export default function App() {
               <span className="resultsbar__sources">via {sources.join(' · ') || '—'}</span>
             </div>
 
-            <div className="workfilters">
-              {[
-                { value: 'all', label: 'Any' },
-                { value: 'remote', label: 'Remote' },
-                { value: 'hybrid', label: 'Hybrid' },
-                { value: 'on-site', label: 'On-site' },
-              ].map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`workfilter ${workFilter === value ? 'is-active' : ''}`}
-                  onClick={() => setWorkFilter(value)}
-                >
-                  {label}
-                </button>
-              ))}
-              {workFilter !== 'all' && (
-                <span className="resultsbar__count workfilters__count">
-                  <strong>{filteredJobs.length}</strong> matching
-                </span>
-              )}
-            </div>
+            {workModes.length > 0 && (
+              <div className="resultsbar__count workfilters__count">
+                <strong>{filteredJobs.length}</strong> matching
+              </div>
+            )}
 
             {filteredJobs.length === 0 ? (
               <div className="empty">
-                No {workFilter} roles match this search. Try a different filter.
+                No {workModes.join(' or ')} roles match this search. Try a different filter.
               </div>
             ) : (
               filteredJobs.map((job, i) => (
