@@ -214,6 +214,7 @@ export default function App() {
           <span className="field-label">Work mode</span>
           <div className="mode-select" role="group" aria-label="Work mode">
             {[
+              { value: 'all', label: 'All' },
               { value: 'remote', label: 'Remote' },
               { value: 'hybrid', label: 'Hybrid' },
               { value: 'on-site', label: 'On-site' },
@@ -221,9 +222,9 @@ export default function App() {
               <button
                 key={value}
                 type="button"
-                aria-pressed={workModes.includes(value)}
-                className={`mode-select__chip ${workModes.includes(value) ? 'is-on' : ''}`}
-                onClick={() => toggleWorkMode(value)}
+                aria-pressed={value === 'all' ? workModes.length === 0 : workModes.includes(value)}
+                className={`mode-select__chip ${value === 'all' && workModes.length === 0 ? 'is-on' : ''} ${value !== 'all' && workModes.includes(value) ? 'is-on' : ''}`}
+                onClick={() => (value === 'all' ? setWorkModes([]) : toggleWorkMode(value))}
               >
                 {label}
               </button>
