@@ -264,15 +264,6 @@ export default function App() {
                 location — pick a single country from the results.
               </p>
             </article>
-            <article className="about__card">
-              <h2 className="about__card-title">A note on keys</h2>
-              <p className="about__card-body">
-                Adzuna and JSearch need API keys set in{' '}
-                <code>backend/.env</code>. Missing or rate-limited sources are
-                skipped and the rest of the results still come through, with a
-                notice when a source couldn't be reached.
-              </p>
-            </article>
           </div>
         </section>
       ) : (
