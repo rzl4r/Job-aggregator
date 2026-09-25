@@ -68,6 +68,48 @@ function Close() {
   );
 }
 
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+function initials(name) {
+  const parts = String(name || '').trim().split(/\s+/);
+  const first = (parts[0] || '')[0] || '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : '';
+  return (first + last).toUpperCase() || '?';
+}
+
+const BADGE_COLORS = [
+  '#2563eb',
+  '#7c3aed',
+  '#059669',
+  '#d97706',
+  '#db2777',
+  '#0d9488',
+  '#dc2626',
+  '#4f46e5',
+];
+
+function badgeColor(key) {
+  let h = 0;
+  for (const ch of String(key || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return BADGE_COLORS[h % BADGE_COLORS.length];
+}
+
+const SUGGESTIONS = [
+  'Frontend Developer',
+  'Backend Engineer',
+  'Data Scientist',
+  'Product Manager',
+  'DevOps Engineer',
+  'Graphic Designer',
+];
+
 export default function App() {
   const [theme, setTheme] = useState(getInitialTheme);
   const [query, setQuery] = useState('');
@@ -89,17 +131,18 @@ export default function App() {
     setSelectedJob(null);
   }
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    if (!query.trim()) return;
+  async function runSearch(q, loc) {
+    const term = (q ?? query).trim();
+    if (!term) return;
 
     setStatus('loading');
     setHasSearched(true);
     setSelectedJob(null);
 
     try {
-      const params = new URLSearchParams({ query });
-      if (location.trim()) params.set('location', location.trim());
+      const params = new URLSearchParams({ query: term });
+      const useLoc = (loc ?? location).trim();
+      if (useLoc) params.set('location', useLoc);
 
       const res = await fetch(`${API_BASE}/api/jobs/search?${params.toString()}`);
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
@@ -112,6 +155,11 @@ export default function App() {
       console.error(err);
       setStatus('error');
     }
+  }
+
+  function handleSearch(e) {
+    e.preventDefault();
+    runSearch();
   }
 
   const sources = [...new Set(jobs.map((j) => j.source))];
@@ -174,6 +222,11 @@ export default function App() {
           One search across global job boards — deduped and sorted by recency.
           Pick from millions of live openings worldwide.
         </p>
+        <div className="masthead__brands">
+          <span>Adzuna</span>
+          <span>Workable</span>
+          <span>JSearch</span>
+        </div>
       </header>
 
       <form className="searchbar" onSubmit={handleSearch}>
@@ -241,6 +294,26 @@ export default function App() {
         </button>
       </form>
 
+      {!hasSearched && (
+        <div className="suggestions">
+          <span className="suggestions__label">Trending</span>
+          {SUGGESTIONS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className="suggestions__chip"
+              onClick={() => {
+                setQuery(t);
+                setLocation('');
+                runSearch(t, '');
+              }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
       {sourceErrors.length > 0 && (
         <p className="notice">
           {sourceErrors.map((e) => e.source.replace('search', '')).join(' and ')} was unreachable —
@@ -251,9 +324,13 @@ export default function App() {
       <main className="listings">
         {status === 'idle' && !hasSearched && (
           <div className="empty hero">
+            <span className="hero__icon">
+              <SearchIcon />
+            </span>
+            <h2 className="hero__title">Your next role starts here</h2>
             <p>
-              Query any board from one box. Results from every configured source
-              line up newest first — best for chasing a role before the crowd does.
+              We pull live openings from Adzuna, Workable and JSearch, merge
+              them into one list and sort newest first.
             </p>
           </div>
         )}
@@ -308,6 +385,9 @@ export default function App() {
                 onClick={() => setSelectedJob(job)}
               >
                 <span className="listing__index">{String(i + 1).padStart(2, '0')}</span>
+                <span className="listing__badge" style={{ background: badgeColor(job.company) }}>
+                  {initials(job.company)}
+                </span>
                 <div className="listing__body">
                   <div className="listing__headline">
                     <h2 className="listing__title">{job.title}</h2>
@@ -328,17 +408,20 @@ export default function App() {
                       </>
                     )}
                     <span className="dot" aria-hidden="true" />
-                    {job.location}
+                    {job.location || job.source}
                     {job.salary && (
                       <>
                         <span className="dot" aria-hidden="true" />
-                        <span className="meta-highlight">{job.salary}</span>
+                        <span className="salary">{job.salary}</span>
                       </>
                     )}
                     {timeAgo(job.postedAt) && (
                       <>
                         <span className="dot" aria-hidden="true" />
-                        {timeAgo(job.postedAt)}
+                        <span className="meta-date">
+                          <ClockIcon />
+                          {timeAgo(job.postedAt)}
+                        </span>
                       </>
                     )}
                   </p>
@@ -370,9 +453,17 @@ export default function App() {
               </button>
             </div>
             <h2 className="modal__title">{selectedJob.title}</h2>
-            <p className="modal__company">{selectedJob.company}</p>
+            <div className="modal__companyrow">
+              <span
+                className="listing__badge modal__badge"
+                style={{ background: badgeColor(selectedJob.company) }}
+              >
+                {initials(selectedJob.company)}
+              </span>
+              <p className="modal__company">{selectedJob.company}</p>
+            </div>
             <p className="modal__meta">
-              <span className="meta-highlight">{selectedJob.location}</span>
+              <span className="meta-highlight">{selectedJob.location || selectedJob.source}</span>
               {selectedJob.workMode && (
                 <>
                   <span className="modal__dot" aria-hidden="true" />
@@ -384,13 +475,16 @@ export default function App() {
               {selectedJob.salary && (
                 <>
                   <span className="modal__dot" aria-hidden="true" />
-                  <span className="meta-highlight">{selectedJob.salary}</span>
+                  <span className="salary">{selectedJob.salary}</span>
                 </>
               )}
               {timeAgo(selectedJob.postedAt) && (
                 <>
                   <span className="modal__dot" aria-hidden="true" />
-                  {timeAgo(selectedJob.postedAt)}
+                  <span className="meta-date">
+                    <ClockIcon />
+                    {timeAgo(selectedJob.postedAt)}
+                  </span>
                 </>
               )}
             </p>
