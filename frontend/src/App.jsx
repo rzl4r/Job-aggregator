@@ -372,6 +372,16 @@ export default function App() {
         </div>
       )}
 
+      <p className="tip">
+        <svg className="tip__ico" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 11v5" />
+          <path d="M12 8v0.01" />
+        </svg>
+        Searching the same role a few times turns up different listings — boards
+        rotate their feed, so check back often.
+      </p>
+
       {sourceErrors.length > 0 && (
         <p className="notice">
           {sourceErrors.map((e) => e.source.replace('search', '')).join(' and ')} was unreachable —

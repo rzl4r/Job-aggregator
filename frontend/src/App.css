@@ -484,6 +484,24 @@ code {
   border-radius: var(--radius-sm);
 }
 
+/* ---------- Tip ---------- */
+
+.tip {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 1.2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.tip__ico {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
 /* ---------- Suggestions ---------- */
 
 .suggestions {
