@@ -158,26 +158,21 @@ export default function App() {
               </svg>
             </span>
           </button>
-          <span className="appbar__edition">No. 01</span>
+          <span className="appbar__edition">Find Jobs · Worldwide</span>
         </div>
       </nav>
 
       <header className="masthead">
         <p className="masthead__kicker">
-          The Roundup · No. 01 ·{' '}
-          {new Intl.DateTimeFormat('en-GB', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          }).format(new Date())}
+          Search jobs across Adzuna · Workable · JSearch
         </p>
         <h1 className="masthead__title">
-          Every listing,<br />
-          <em>one search.</em>
+          Find your next role,<br />
+          <em>anywhere.</em>
         </h1>
         <p className="masthead__tagline">
-          A single pass across Adzuna and Jooble, deduped into one list. Click a
-          result to open the original posting where it lives.
+          One search across global job boards — deduped and sorted by recency.
+          Pick from millions of live openings worldwide.
         </p>
       </header>
 
