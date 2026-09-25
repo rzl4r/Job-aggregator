@@ -23,7 +23,7 @@ function normalizeKey(title = '', company = '') {
 // ---------- Source adapters ----------
 // Each adapter takes the same search params and returns an array of
 // jobs already reshaped into one common format:
-// { id, title, company, location, salary, description, url, source, postedAt, workMode }
+// { id, title, company, location, country, salary, description, url, source, postedAt, workMode }
 
 // Heuristic: figure out remote/hybrid/on-site from a text blob when the
 // source API doesn't tell us directly.
@@ -32,6 +32,43 @@ function inferWorkMode(...texts) {
   if (/\bremote\b|work from home|wfh|\(remote\)/.test(hay)) return 'remote';
   if (/\bhybrid\b|flexible\/hybrid/.test(hay)) return 'hybrid';
   return 'on-site';
+}
+
+const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+const NON_COUNTRIES = new Set([
+  'remote',
+  'hybrid',
+  'worldwide',
+  'global',
+  'international',
+  'anywhere',
+  'multiple',
+  'any',
+  'elsewhere',
+  'not specified',
+  'various',
+]);
+
+function countryFromCode(code) {
+  const c = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return null;
+  try {
+    return regionNames.of(c);
+  } catch {
+    return null;
+  }
+}
+
+function extractCountry(locString) {
+  if (!locString) return null;
+  const parts = String(locString)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const last = parts[parts.length - 1];
+  if (!last || last.length < 3 || !/^[A-Za-z .'-]+$/.test(last)) return null;
+  if (NON_COUNTRIES.has(last.toLowerCase())) return null;
+  return last;
 }
 
 // Adzuna exposes one API per country, so "worldwide" means hitting a
@@ -82,6 +119,7 @@ async function searchAdzuna({ query, location, page = 1 }) {
       url: job.redirect_url,
       source: 'Adzuna',
       postedAt: job.created,
+      country: countryFromCode(ADZUNA_COUNTRIES[i]) || ADZUNA_COUNTRIES[i].toUpperCase(),
       workMode: inferWorkMode(job.title, job.location?.display_name),
     }))
   );
@@ -109,6 +147,7 @@ async function searchJooble({ query, location, page = 1 }) {
     url: job.link,
     source: 'Jooble',
     postedAt: job.updated,
+    country: extractCountry(job.location) || null,
   }));
 }
 
@@ -146,6 +185,7 @@ async function searchJSearch({ query, location, page = 1 }) {
       url: job.job_apply_link || job.job_google_link || '',
       source: job.job_publisher || 'JSearch',
       postedAt: job.job_posted_at_datetime_utc || null,
+      country: extractCountry(job.job_location) || countryFromCode(job.job_country) || null,
       workMode: job.job_is_remote
         ? 'remote'
         : inferWorkMode(job.job_title, job.job_location, job.job_description),
@@ -185,6 +225,7 @@ async function searchWorkable({ query, location, page = 1 }) {
       url: job.url,
       source: 'Workable',
       postedAt: job.created || null,
+      country: loc.countryName || null,
       workMode:
         job.workplace === 'on_site'
           ? 'on-site'

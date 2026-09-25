@@ -120,6 +120,7 @@ export default function App() {
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [workModes, setWorkModes] = useState([]); // [] = all | ['remote' | 'hybrid' | 'on-site']
+  const [country, setCountry] = useState(''); // '' = all countries
 
   function toggleWorkMode(mode) {
     setWorkModes((prev) =>
@@ -138,6 +139,7 @@ export default function App() {
     setStatus('loading');
     setHasSearched(true);
     setSelectedJob(null);
+    setCountry('');
 
     try {
       const params = new URLSearchParams({ query: term });
@@ -164,10 +166,18 @@ export default function App() {
 
   const sources = [...new Set(jobs.map((j) => j.source))];
 
-  const filteredJobs =
+  const allCountries = [...new Set(jobs.map((j) => j.country).filter(Boolean))].sort();
+
+  const modeFiltered =
     workModes.length === 0
       ? jobs
       : jobs.filter((j) => j.workMode && workModes.includes(j.workMode));
+
+  const filteredJobs = country
+    ? modeFiltered.filter((j) => j.country === country)
+    : modeFiltered;
+
+  const filtersActive = workModes.length > 0 || Boolean(country);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -366,7 +376,33 @@ export default function App() {
               <span className="resultsbar__sources">via {sources.join(' · ') || '—'}</span>
             </div>
 
-            {workModes.length > 0 && (
+            {!location.trim() && allCountries.length > 1 && (
+              <div className="filters-row">
+                <div className="country-filter">
+                  <span className="country-filter__label">Country</span>
+                  <div className="country-filter__wrap">
+                    <select
+                      className="country-filter__select"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      aria-label="Filter by country"
+                    >
+                      <option value="">All countries</option>
+                      {allCountries.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    <svg className="country-filter__arrow" viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M4 6l4 4 4-4" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {filtersActive && (
               <div className="resultsbar__count workfilters__count">
                 <strong>{filteredJobs.length}</strong> matching
               </div>
@@ -374,7 +410,9 @@ export default function App() {
 
             {filteredJobs.length === 0 ? (
               <div className="empty">
-                No {workModes.join(' or ')} roles match this search. Try a different filter.
+                No roles match this search
+                {filtersActive && ' and your filters'}. Try a broader title, another country, or
+                clear a filter.
               </div>
             ) : (
               filteredJobs.map((job, i) => (

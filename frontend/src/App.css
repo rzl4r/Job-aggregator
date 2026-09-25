@@ -531,6 +531,72 @@ code {
   margin-bottom: 0.5rem;
 }
 
+/* ---------- Country filter ---------- */
+
+.filters-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.country-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.country-filter__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.country-filter__wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.country-filter__select {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.42rem 1.9rem 0.42rem 0.7rem;
+  cursor: pointer;
+  max-width: 200px;
+  text-overflow: ellipsis;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.country-filter__select:hover {
+  border-color: var(--accent);
+}
+
+.country-filter__select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px var(--accent-faint);
+}
+
+.country-filter__arrow {
+  position: absolute;
+  right: 0.55rem;
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
 /* ---------- Job listings ---------- */
 
 .listings {
