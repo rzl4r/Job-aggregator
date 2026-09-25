@@ -173,6 +173,35 @@ code {
   letter-spacing: 0.04em;
 }
 
+.appbar__link {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 0.42rem 0.8rem;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.appbar__link:hover {
+  color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.appbar__link.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.appbar__link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .theme-toggle {
   display: grid;
   place-items: center;
@@ -849,6 +878,71 @@ code {
   color: var(--danger);
   background: var(--danger-faint);
   border-color: var(--danger-faint);
+}
+
+/* ---------- About ---------- */
+
+.about {
+  padding: 2.2rem 0 2.6rem;
+}
+
+.about__title {
+  margin: 0;
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.about__title em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.about__lede {
+  max-width: 62ch;
+  margin: 0.7rem 0 1.8rem;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.about__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.9rem;
+}
+
+.about__card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.25rem;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.about__card:hover {
+  border-color: var(--rule-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.about__card-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+}
+
+.about__card-body {
+  margin: 0;
+  font-size: 0.87rem;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.about__card-body strong {
+  color: var(--ink-soft);
 }
 
 /* ---------- Footer ---------- */

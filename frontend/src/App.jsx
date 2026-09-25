@@ -121,6 +121,7 @@ export default function App() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [workModes, setWorkModes] = useState([]); // [] = all | ['remote' | 'hybrid' | 'on-site']
   const [country, setCountry] = useState(''); // '' = all countries
+  const [view, setView] = useState('jobs'); // 'jobs' | 'about'
 
   function toggleWorkMode(mode) {
     setWorkModes((prev) =>
@@ -196,11 +197,18 @@ export default function App() {
   return (
     <div className="page">
       <nav className="appbar">
-        <span className="appbar__mark">
+        <span className="appbar__mark" onClick={() => { setView('jobs'); setSelectedJob(null); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setView('jobs'); setSelectedJob(null); } }}>
           <SkillMark />
           Roundup
         </span>
         <div className="appbar__side">
+          <button
+            className={`appbar__link ${view === 'about' ? 'is-active' : ''}`}
+            type="button"
+            onClick={() => { setView(view === 'about' ? 'jobs' : 'about'); setSelectedJob(null); }}
+          >
+            About
+          </button>
           <button
             className="theme-toggle"
             type="button"
@@ -220,7 +228,56 @@ export default function App() {
         </div>
       </nav>
 
-      <header className="masthead">
+      {view === 'about' ? (
+        <section className="about">
+          <h1 className="about__title">About Roundup</h1>
+          <p className="about__lede">
+            Roundup is a lightweight job aggregator that searches several
+            global job boards at once and folds the results into a single,
+            newest-first list.
+          </p>
+          <div className="about__grid">
+            <article className="about__card">
+              <h2 className="about__card-title">How it works</h2>
+              <p className="about__card-body">
+                Type a role, skill or title (optionally a city or region) and hit
+                Search. Roundup queries every configured source in parallel,
+                merges the results into one list, removes near-duplicates and
+                sorts by posting date.
+              </p>
+            </article>
+            <article className="about__card">
+              <h2 className="about__card-title">Sources</h2>
+              <p className="about__card-body">
+                Live results come from{' '}
+                <strong>Adzuna</strong> (17 country boards),{' '}
+                <strong>Workable</strong> (global) and{' '}
+                <strong>JSearch</strong> (a RapidAPI index of many boards). Each
+                listing links back to the original posting.
+              </p>
+            </article>
+            <article className="about__card">
+              <h2 className="about__card-title">Filters</h2>
+              <p className="about__card-body">
+                Narrow results with the work-mode chips (remote, hybrid,
+                on-site) in the search bar, or — when you search without a
+                location — pick a single country from the results.
+              </p>
+            </article>
+            <article className="about__card">
+              <h2 className="about__card-title">A note on keys</h2>
+              <p className="about__card-body">
+                Adzuna and JSearch need API keys set in{' '}
+                <code>backend/.env</code>. Missing or rate-limited sources are
+                skipped and the rest of the results still come through, with a
+                notice when a source couldn't be reached.
+              </p>
+            </article>
+          </div>
+        </section>
+      ) : (
+        <>
+          <header className="masthead">
         <p className="masthead__kicker">
           Search jobs across Adzuna · Workable · JSearch
         </p>
@@ -471,6 +528,8 @@ export default function App() {
           </>
         )}
       </main>
+        </>
+      )}
 
       <footer className="foot">
         <p className="foot__brand">Roundup</p>
