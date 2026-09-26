@@ -578,6 +578,24 @@ code {
   margin-bottom: 0.5rem;
 }
 
+.filters-chip {
+  border-radius: 999px;
+  padding: 0.42rem 0.9rem;
+}
+
+.filters-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-right: 0.15rem;
+}
+
+.mode-select--tight {
+  gap: 0.3rem;
+}
+
 /* ---------- Country filter ---------- */
 
 .filters-row {
@@ -642,6 +660,62 @@ code {
   height: 13px;
   color: var(--muted);
   pointer-events: none;
+}
+
+/* ---------- Load more ---------- */
+
+.loadmore {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.6rem;
+}
+
+.loadmore__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1.6rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.loadmore__btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.loadmore__btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.loadmore__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.loadmore__btn .arrow__ico {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
+}
+
+.spinner--accent {
+  border-color: rgba(37, 87, 167, 0.25);
+  border-top-color: var(--accent);
+}
+
+.star-hint {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* ---------- Job listings ---------- */
@@ -755,6 +829,45 @@ code {
 .listing:hover .listing__open {
   opacity: 1;
   transform: none;
+}
+
+.listing__save {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--faint);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.listing__save:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.listing__save:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.listing__save svg {
+  width: 14px;
+  height: 14px;
+}
+
+.listing__save.is-saved {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.listing__save.is-saved svg {
+  fill: currentColor;
 }
 
 .listing__open .arrow__ico {
@@ -1031,6 +1144,12 @@ code {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
+.modal__head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .modal__source {
   display: inline-block;
   font-size: 0.7rem;
@@ -1038,6 +1157,42 @@ code {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--accent);
+}
+
+.modal__bookmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.modal__bookmark:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.modal__bookmark svg {
+  width: 13px;
+  height: 13px;
+}
+
+.modal__bookmark.is-saved {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.modal__bookmark.is-saved svg {
+  fill: currentColor;
 }
 
 .modal__close {

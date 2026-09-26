@@ -122,10 +122,40 @@ export default function App() {
   const [workModes, setWorkModes] = useState([]); // [] = all | ['remote' | 'hybrid' | 'on-site']
   const [country, setCountry] = useState(''); // '' = all countries
   const [view, setView] = useState('jobs'); // 'jobs' | 'about'
+  const [savedIds, setSavedIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('roundup-saved') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [jobTypes, setJobTypes] = useState([]); // [] = all | 'full-time' | 'part-time' | 'contract' | 'internship'
+  const [experiences, setExperiences] = useState([]); // [] = all | 'entry' | 'mid' | 'senior'
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   function toggleWorkMode(mode) {
     setWorkModes((prev) =>
       prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
+    );
+  }
+
+  function toggleJobType(t) {
+    setJobTypes((prev) =>
+      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+    );
+  }
+
+  function toggleExperience(x) {
+    setExperiences((prev) =>
+      prev.includes(x) ? prev.filter((y) => y !== x) : [...prev, x]
+    );
+  }
+
+  function toggleSave(id) {
+    setSavedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
 
@@ -141,6 +171,9 @@ export default function App() {
     setHasSearched(true);
     setSelectedJob(null);
     setCountry('');
+    setPage(1);
+    setLoadingMore(false);
+    setExperiences([]);
 
     try {
       const params = new URLSearchParams({ query: term });
@@ -165,6 +198,31 @@ export default function App() {
     runSearch();
   }
 
+  async function handleLoadMore() {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const params = new URLSearchParams({ query: query.trim(), page: String(page + 1) });
+      if (location.trim()) params.set('location', location.trim());
+
+      const res = await fetch(`${API_BASE}/api/jobs/search?${params.toString()}`);
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      const data = await res.json();
+
+      setJobs((prev) => {
+        const seen = new Set(prev.map((j) => j.id));
+        const fresh = (data.jobs || []).filter((j) => !seen.has(j.id));
+        return [...prev, ...fresh];
+      });
+      setSourceErrors(data.sourceErrors || []);
+      setPage((p) => p + 1);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   const sources = [...new Set(jobs.map((j) => j.source))];
 
   const allCountries = [...new Set(jobs.map((j) => j.country).filter(Boolean))].sort();
@@ -174,16 +232,41 @@ export default function App() {
       ? jobs
       : jobs.filter((j) => j.workMode && workModes.includes(j.workMode));
 
-  const filteredJobs = country
-    ? modeFiltered.filter((j) => j.country === country)
-    : modeFiltered;
+  const typeFiltered =
+    jobTypes.length === 0
+      ? modeFiltered
+      : modeFiltered.filter((j) => j.jobType && jobTypes.includes(j.jobType));
 
-  const filtersActive = workModes.length > 0 || Boolean(country);
+  const levelFiltered =
+    experiences.length === 0
+      ? typeFiltered
+      : typeFiltered.filter((j) => j.experience && experiences.includes(j.experience));
+
+  const countryFiltered = country
+    ? levelFiltered.filter((j) => j.country === country)
+    : levelFiltered;
+
+  const filteredJobs = savedOnly
+    ? countryFiltered.filter((j) => savedIds.includes(j.id))
+    : countryFiltered;
+
+  const filtersActive =
+    workModes.length > 0 ||
+    jobTypes.length > 0 ||
+    experiences.length > 0 ||
+    Boolean(country) ||
+    savedOnly;
+
+  const savedInResults = jobs.filter((j) => savedIds.includes(j.id)).length;
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('roundup-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('roundup-saved', JSON.stringify(savedIds));
+  }, [savedIds]);
 
   useEffect(() => {
     if (!selectedJob) return;
@@ -260,8 +343,9 @@ export default function App() {
               <h2 className="about__card-title">Filters</h2>
               <p className="about__card-body">
                 Narrow results with the work-mode chips (remote, hybrid,
-                on-site) in the search bar, or — when you search without a
-                location — pick a single country from the results.
+                on-site) in the search bar, then slice by type, experience
+                level or country. Star jobs you like and filter to just your
+                saved list.
               </p>
             </article>
           </div>
@@ -434,8 +518,8 @@ export default function App() {
               <span className="resultsbar__sources">via {sources.join(' · ') || '—'}</span>
             </div>
 
-            {!location.trim() && allCountries.length > 1 && (
-              <div className="filters-row">
+            <div className="filters-row">
+              {!location.trim() && allCountries.length > 1 && (
                 <div className="country-filter">
                   <span className="country-filter__label">Country</span>
                   <div className="country-filter__wrap">
@@ -457,6 +541,75 @@ export default function App() {
                     </svg>
                   </div>
                 </div>
+              )}
+              <button
+                type="button"
+                className={`mode-select__chip filters-chip ${savedOnly ? 'is-on' : ''}`}
+                aria-pressed={savedOnly}
+                onClick={() => setSavedOnly((v) => !v)}
+              >
+                Saved{!savedOnly && savedInResults > 0 ? ` (${savedInResults})` : ''}
+              </button>
+            </div>
+
+            <div className="filters-row">
+              <span className="filters-label">Type</span>
+              <div className="mode-select mode-select--tight">
+                <button
+                  type="button"
+                  className={`mode-select__chip ${jobTypes.length === 0 ? 'is-on' : ''}`}
+                  aria-pressed={jobTypes.length === 0}
+                  onClick={() => setJobTypes([])}
+                >
+                  Any
+                </button>
+                {[
+                  { value: 'full-time', label: 'Full-time' },
+                  { value: 'part-time', label: 'Part-time' },
+                  { value: 'contract', label: 'Contract' },
+                  { value: 'internship', label: 'Internship' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`mode-select__chip ${jobTypes.includes(value) ? 'is-on' : ''}`}
+                    aria-pressed={jobTypes.includes(value)}
+                    onClick={() => toggleJobType(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {jobs.some((j) => j.experience) && (
+              <div className="filters-row">
+                <span className="filters-label">Level</span>
+                <div className="mode-select mode-select--tight">
+                  <button
+                    type="button"
+                    className={`mode-select__chip ${experiences.length === 0 ? 'is-on' : ''}`}
+                    aria-pressed={experiences.length === 0}
+                    onClick={() => setExperiences([])}
+                  >
+                    Any
+                  </button>
+                  {[
+                    { value: 'entry', label: 'Entry' },
+                    { value: 'mid', label: 'Mid' },
+                    { value: 'senior', label: 'Senior' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`mode-select__chip ${experiences.includes(value) ? 'is-on' : ''}`}
+                      aria-pressed={experiences.includes(value)}
+                      onClick={() => toggleExperience(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -468,17 +621,33 @@ export default function App() {
 
             {filteredJobs.length === 0 ? (
               <div className="empty">
-                No roles match this search
-                {filtersActive && ' and your filters'}. Try a broader title, another country, or
-                clear a filter.
+                {savedOnly ? (
+                  <>
+                    No saved roles in these results. Tap the{' '}
+                    <span className="star-hint">☆</span> star on a listing to save it.
+                  </>
+                ) : (
+                  <>
+                    No roles match this search
+                    {filtersActive && ' and your filters'}. Try a broader title, another
+                    country, or clear a filter.
+                  </>
+                )}
               </div>
             ) : (
               filteredJobs.map((job, i) => (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 className="listing"
                 key={job.id}
                 onClick={() => setSelectedJob(job)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedJob(job);
+                  }
+                }}
               >
                 <span className="listing__index">{String(i + 1).padStart(2, '0')}</span>
                 <span className="listing__badge" style={{ background: badgeColor(job.company) }}>
@@ -489,6 +658,18 @@ export default function App() {
                     <h2 className="listing__title">{job.title}</h2>
                     <div className="listing__aside">
                       <span className="listing__source">{job.source}</span>
+                      <button
+                        type="button"
+                        className={`listing__save ${savedIds.includes(job.id) ? 'is-saved' : ''}`}
+                        aria-label={savedIds.includes(job.id) ? 'Remove from saved' : 'Save job'}
+                        aria-pressed={savedIds.includes(job.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSave(job.id);
+                        }}
+                      >
+                        <StarIcon />
+                      </button>
                       <span className="listing__open">
                         Details
                         <Arrow />
@@ -523,9 +704,30 @@ export default function App() {
                   </p>
                   {job.description && <p className="listing__desc">{job.description}…</p>}
                 </div>
-              </button>
+              </div>
               ))
             )}
+
+            <div className="loadmore">
+              <button
+                type="button"
+                className="loadmore__btn"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <>
+                    <span className="spinner spinner--accent" aria-hidden="true" />
+                    Loading…
+                  </>
+                ) : (
+                  <>
+                    Load more
+                    <Arrow />
+                  </>
+                )}
+              </button>
+            </div>
           </>
         )}
       </main>
@@ -540,7 +742,19 @@ export default function App() {
         <div className="modal" role="dialog" aria-modal="true" aria-label="Job details" onClick={closeModal}>
           <div className="modal__panel" onClick={(e) => e.stopPropagation()}>
             <div className="modal__head">
-              <span className="modal__source">{selectedJob.source}</span>
+              <div className="modal__head-left">
+                <span className="modal__source">{selectedJob.source}</span>
+                <button
+                  type="button"
+                  className={`modal__bookmark ${savedIds.includes(selectedJob.id) ? 'is-saved' : ''}`}
+                  aria-label={savedIds.includes(selectedJob.id) ? 'Remove from saved' : 'Save job'}
+                  aria-pressed={savedIds.includes(selectedJob.id)}
+                  onClick={() => toggleSave(selectedJob.id)}
+                >
+                  <StarIcon />
+                  {savedIds.includes(selectedJob.id) ? 'Saved' : 'Save'}
+                </button>
+              </div>
               <button
                 type="button"
                 className="modal__close"

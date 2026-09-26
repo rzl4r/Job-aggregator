@@ -23,7 +23,7 @@ function normalizeKey(title = '', company = '') {
 // ---------- Source adapters ----------
 // Each adapter takes the same search params and returns an array of
 // jobs already reshaped into one common format:
-// { id, title, company, location, country, salary, description, url, source, postedAt, workMode }
+// { id, title, company, location, country, salary, description, url, source, postedAt, workMode, jobType, experience }
 
 // Heuristic: figure out remote/hybrid/on-site from a text blob when the
 // source API doesn't tell us directly.
@@ -69,6 +69,47 @@ function extractCountry(locString) {
   if (!last || last.length < 3 || !/^[A-Za-z .'-]+$/.test(last)) return null;
   if (NON_COUNTRIES.has(last.toLowerCase())) return null;
   return last;
+}
+
+const JOB_TYPE_LABELS = {
+  FULL_TIME: 'full-time',
+  FULLTIME: 'full-time',
+  PART_TIME: 'part-time',
+  PARTTIME: 'part-time',
+  CONTRACT: 'contract',
+  CONTRACTOR: 'contract',
+  TEMPORARY: 'contract',
+  INTERNSHIP: 'internship',
+  INTERN: 'internship',
+};
+
+function mapJobType(raw) {
+  const normalized = String(raw || '').trim().toUpperCase().replace(/[\s_-]+/g, '');
+  return JOB_TYPE_LABELS[normalized] || null;
+}
+
+function inferAdzunaJobType(job) {
+  const ct = String(job.contract_type || '').toLowerCase();
+  if (ct === 'contract') return 'contract';
+  if (job.full_time === false) return 'part-time';
+  if (job.full_time === true) return 'full-time';
+  return 'full-time'; // most listings are full-time even when the board omits the flag
+}
+
+function inferExperienceLevel(text) {
+  const hay = String(text || '').toLowerCase();
+  if (/entry|associate|junior|graduate|intern/.test(hay)) return 'entry';
+  if (/senior|executive|director|principal|lead|staff/.test(hay)) return 'senior';
+  if (/mid|intermediate|experienced/.test(hay)) return 'mid';
+  return null;
+}
+
+function inferExperienceFromMonths(months) {
+  const m = Number(months);
+  if (!Number.isFinite(m) || m <= 0) return null;
+  if (m < 12) return 'entry';
+  if (m <= 48) return 'mid';
+  return 'senior';
 }
 
 // Adzuna exposes one API per country, so "worldwide" means hitting a
@@ -120,6 +161,8 @@ async function searchAdzuna({ query, location, page = 1 }) {
       source: 'Adzuna',
       postedAt: job.created,
       country: countryFromCode(ADZUNA_COUNTRIES[i]) || ADZUNA_COUNTRIES[i].toUpperCase(),
+      jobType: inferAdzunaJobType(job),
+      experience: null,
       workMode: inferWorkMode(job.title, job.location?.display_name),
     }))
   );
@@ -148,6 +191,8 @@ async function searchJooble({ query, location, page = 1 }) {
     source: 'Jooble',
     postedAt: job.updated,
     country: extractCountry(job.location) || null,
+    jobType: null,
+    experience: null,
   }));
 }
 
@@ -160,7 +205,9 @@ async function searchJSearch({ query, location, page = 1 }) {
   const { data } = await axios.get(url, {
     params: {
       query: location ? `${query} in ${location}` : query,
-      num_pages: '1',
+      // "num_pages" = how many result pages to return in one go. Asking for
+      // more pages on a "load more" request surfaces extra listings.
+      num_pages: String(Math.min(page, 3)),
     },
     headers: {
       'X-RapidAPI-Key': apiKey,
@@ -174,6 +221,7 @@ async function searchJSearch({ query, location, page = 1 }) {
       job.job_min_salary && job.job_max_salary
         ? `${Math.round(job.job_min_salary)} - ${Math.round(job.job_max_salary)}`
         : job.job_salary || job.job_salary_string || null;
+    const reqExp = job.job_required_experience || {};
 
     return {
       id: `jsearch-${job.job_id || page}-${i}`,
@@ -186,6 +234,8 @@ async function searchJSearch({ query, location, page = 1 }) {
       source: job.job_publisher || 'JSearch',
       postedAt: job.job_posted_at_datetime_utc || null,
       country: extractCountry(job.job_location) || countryFromCode(job.job_country) || null,
+      jobType: mapJobType(job.job_employment_type),
+      experience: inferExperienceFromMonths(reqExp.no_of_months) || null,
       workMode: job.job_is_remote
         ? 'remote'
         : inferWorkMode(job.job_title, job.job_location, job.job_description),
@@ -193,16 +243,26 @@ async function searchJSearch({ query, location, page = 1 }) {
   });
 }
 
+// Workable paginates with an opaque token (not a page number). The token for
+// a query is only returned by the previous response, so we cache it here to
+// make "load more" work per (query, location).
+const workableTokens = new Map();
+
 async function searchWorkable({ query, location, page = 1 }) {
   const url = 'https://jobs.workable.com/api/v1/jobs';
+  const key = `${query}|${location || ''}`;
+  const pageToken = page > 1 ? workableTokens.get(key) : null;
 
   const { data } = await axios.get(url, {
     params: {
       query,
       location: location || undefined,
+      pageToken: pageToken || undefined,
     },
     timeout: 8000,
   });
+
+  if (data.nextPageToken) workableTokens.set(key, data.nextPageToken);
 
   return (data.jobs || []).map((job) => {
     const loc = job.location || {};
@@ -226,6 +286,8 @@ async function searchWorkable({ query, location, page = 1 }) {
       source: 'Workable',
       postedAt: job.created || null,
       country: loc.countryName || null,
+      jobType: mapJobType(job.employment_type),
+      experience: inferExperienceLevel(job.experienceLevel) || null,
       workMode:
         job.workplace === 'on_site'
           ? 'on-site'
