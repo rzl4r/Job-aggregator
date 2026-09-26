@@ -71,6 +71,108 @@ function extractCountry(locString) {
   return last;
 }
 
+// Map of common country/city names → the country name JSearch/Workable/Adzuna
+// use in their `country` field. Used to hard-filter results when the user
+// types a location ("india" → only India jobs).
+const LOCATION_COUNTRY = {
+  india: 'India', indian: 'India', bangalore: 'India', bengaluru: 'India', mumbai: 'India',
+  delhi: 'India', hyderabad: 'India', pune: 'India', chennai: 'India', kolkata: 'India',
+  gurgaon: 'India', gurugram: 'India', noida: 'India', ahmedabad: 'India', kochi: 'India',
+  indore: 'India', jaipur: 'India', nagpur: 'India', bhopal: 'India', chandigarh: 'India',
+  'united states': 'United States', usa: 'United States', america: 'United States',
+  'new york': 'United States', nyc: 'United States', 'new york city': 'United States',
+  'san francisco': 'United States', 'bay area': 'United States', 'los angeles': 'United States',
+  seattle: 'United States', austin: 'United States', chicago: 'United States',
+  boston: 'United States', atlanta: 'United States', dallas: 'United States',
+  houston: 'United States', denver: 'United States', phoenix: 'United States',
+  miami: 'United States', 'washington dc': 'United States', washington: 'United States',
+  'united kingdom': 'United Kingdom', uk: 'United Kingdom', britain: 'United Kingdom',
+  london: 'United Kingdom', manchester: 'United Kingdom', birmingham: 'United Kingdom',
+  leeds: 'United Kingdom', edinburgh: 'United Kingdom', glasgow: 'United Kingdom',
+  bristol: 'United Kingdom', liverpool: 'United Kingdom', 'new castle': 'United Kingdom',
+  canada: 'Canada', toronto: 'Canada', vancouver: 'Canada', montreal: 'Canada',
+  ottawa: 'Canada', calgary: 'Canada', 'nova scotia': 'Canada',
+  germany: 'Germany', berlin: 'Germany', munich: 'Germany', frankfurt: 'Germany',
+  hamburg: 'Germany', cologne: 'Germany', stuttgart: 'Germany', dusseldorf: 'Germany',
+  france: 'France', paris: 'France', lyon: 'France', marseille: 'France',
+  spain: 'Spain', madrid: 'Spain', barcelona: 'Spain', valencia: 'Spain', seville: 'Spain',
+  italy: 'Italy', milan: 'Italy', rome: 'Italy', turin: 'Italy', naples: 'Italy',
+  netherlands: 'Netherlands', amsterdam: 'Netherlands', rotterdam: 'Netherlands',
+  thehague: 'Netherlands', 'the hague': 'Netherlands', utrecht: 'Netherlands',
+  poland: 'Poland', warsaw: 'Poland', krakow: 'Poland', wroclaw: 'Poland', gdansk: 'Poland',
+  russia: 'Russia', moscow: 'Russia', 'st petersburg': 'Russia',
+  singapore: 'Singapore',
+  australia: 'Australia', sydney: 'Australia', melbourne: 'Australia', brisbane: 'Australia',
+  perth: 'Australia', adelaide: 'Australia', canberra: 'Australia',
+  'new zealand': 'New Zealand', 'newzealand': 'New Zealand', auckland: 'New Zealand',
+  wellington: 'New Zealand', christchurch: 'New Zealand',
+  mexico: 'Mexico', 'mexico city': 'Mexico', 'mexico city': 'Mexico',
+  brazil: 'Brazil', 'sao paulo': 'Brazil', rio: 'Brazil', 'rio de janeiro': 'Brazil',
+  'south africa': 'South Africa', 'southafrica': 'South Africa', 'cape town': 'South Africa',
+  johannesburg: 'South Africa', durban: 'South Africa',
+  switzerland: 'Switzerland', zurich: 'Switzerland', geneva: 'Switzerland', basel: 'Switzerland',
+  ireland: 'Ireland', dublin: 'Ireland', cork: 'Ireland',
+  japan: 'Japan', tokyo: 'Japan', osaka: 'Japan',
+  china: 'China', beijing: 'China', shanghai: 'China', shenzhen: 'China',
+  'united arab emirates': 'United Arab Emirates', 'unitedarabemirates': 'United Arab Emirates',
+  uae: 'United Arab Emirates', dubai: 'United Arab Emirates', 'abu dhabi': 'United Arab Emirates',
+  'saudi arabia': 'Saudi Arabia', 'saudiarabia': 'Saudi Arabia', riyadh: 'Saudi Arabia',
+  'hong kong': 'Hong Kong', hongkong: 'Hong Kong',
+  'south korea': 'South Korea', 'southkorea': 'South Korea', seoul: 'South Korea',
+  indonesia: 'Indonesia', jakarta: 'Indonesia',
+  malaysia: 'Malaysia', 'kuala lumpur': 'Malaysia',
+  philippines: 'Philippines', manila: 'Philippines',
+  thailand: 'Thailand', bangkok: 'Thailand',
+  vietnam: 'Vietnam', 'ho chi minh': 'Vietnam', hanoi: 'Vietnam',
+  turkey: 'Turkey', istanbul: 'Turkey',
+  qatar: 'Qatar', doha: 'Qatar',
+  kuwait: 'Kuwait',
+  egypt: 'Egypt', cairo: 'Egypt',
+  kenya: 'Kenya', nairobi: 'Kenya',
+  nigeria: 'Nigeria', lagos: 'Nigeria',
+  argentina: 'Argentina', 'buenos aires': 'Argentina',
+  chile: 'Chile', santiago: 'Chile',
+  colombia: 'Colombia', bogota: 'Colombia',
+  peru: 'Peru', lima: 'Peru',
+  portugal: 'Portugal', lisbon: 'Portugal', porto: 'Portugal',
+  belgium: 'Belgium', brussels: 'Belgium', 'brussels airport': 'Belgium',
+  austria: 'Austria', vienna: 'Austria',
+  sweden: 'Sweden', stockholm: 'Sweden',
+  norway: 'Norway', oslo: 'Norway',
+  denmark: 'Denmark', copenhagen: 'Denmark',
+  finland: 'Finland', helsinki: 'Finland',
+  greece: 'Greece', athens: 'Greece',
+  czechia: 'Czechia', 'czech republic': 'Czechia', prague: 'Czechia',
+  romania: 'Romania', bucharest: 'Romania',
+  ukraine: 'Ukraine', kyiv: 'Ukraine', kiev: 'Ukraine',
+  'israel': 'Israel', telaviv: 'Israel', 'tel aviv': 'Israel',
+};
+
+function resolveCountry(term) {
+  const key = String(term || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return LOCATION_COUNTRY[key] || null;
+}
+
+function filterByLocation(jobs, location) {
+  const term = String(location || '').trim().toLowerCase();
+  if (!term) return jobs;
+  if (NON_COUNTRIES.has(term)) return jobs; // "remote", "anywhere" → don't filter
+  const resolved = resolveCountry(term);
+  const resolvedLower = resolved ? resolved.toLowerCase() : null;
+
+  return jobs.filter((j) => {
+    const hay = String(j.location || '').toLowerCase();
+    const country = String(j.country || '').toLowerCase();
+    if (resolvedLower) {
+      // Known place: require the job's country to match. Only fall back to
+      // text matching when the source gave us no country at all.
+      if (country.length > 0) return country === resolvedLower;
+      return hay.includes(term) || hay.includes(resolvedLower);
+    }
+    return hay.includes(term);
+  });
+}
+
 const JOB_TYPE_LABELS = {
   FULL_TIME: 'full-time',
   FULLTIME: 'full-time',
@@ -346,12 +448,13 @@ app.get('/api/jobs/search', async (req, res) => {
     .filter(Boolean);
 
   const merged = mergeResults(resultsBySource);
+  const filtered = filterByLocation(merged, location);
 
   res.json({
     query,
     location: location || null,
-    count: merged.length,
-    jobs: merged,
+    count: filtered.length,
+    jobs: filtered,
     sourceErrors: errors, // surfaced so you can see if an API key is missing/invalid
   });
 });
