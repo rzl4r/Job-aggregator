@@ -54,12 +54,12 @@ Frontend renders it, links out to job.url
 
 ## Next steps worth adding
 
-- **Add JSearch (RapidAPI)** as a third source for LinkedIn/Indeed-style
-  coverage — drop in a `searchJSearch()` adapter in `server.js` following the
-  same pattern as `searchAdzuna`/`searchJooble`, and push it into the
-  `SOURCES` array.
 - **Cache results** (e.g. Redis or even an in-memory Map keyed by
   `query+location`) so repeat searches don't re-hit rate-limited free tiers.
-- **Pagination** — the `page` query param is already wired into both
-  adapters; add "load more" on the frontend.
-- **Persist searches / saved jobs** once you add user accounts.
+
+## Already included
+
+- **Sources**: Adzuna (17 country boards), Workable, and JSearch (RapidAPI).
+- **Filters**: work mode, job type, experience level, country, and saved jobs.
+- **Pagination**: "Load more" via the `page` query param.
+- **Saved jobs**: persisted in the browser via `localStorage`.
